@@ -59,6 +59,22 @@ You install the XML RPC C++ 32-bit library following the command:
 sudo apt install libxmlrpc-c++8v5:i386
 ```
 
+On the most recent Linux distros this package will not be available.
+
+Open the install.sh file and change, line 71 from:
+
+```
+commonDependencies='libcurl3 libjava3d-* ttf-dejavu* fonts-ipafont fonts-baekmuk fonts-nanum fonts-arphic-uming fonts-arphic-ukai'
+```
+
+to:
+(libcurl4)
+
+```
+commonDependencies='libcurl4 libjava3d-* ttf-dejavu* fonts-ipafont fonts-baekmuk fonts-nanum fonts-arphic-uming fonts-arphic-ukai'
+```
+
+
 ## Install script
 
 :warning: Before running the installation script, keep in mind that if you already have ROS installed, it will remove some of the installed libraries. :warning:
@@ -471,3 +487,76 @@ If all goes well, now you can start creating and running programs in URSim, and 
 ![](https://imgur.com/yPguXYm.gif)
 
 That's all folks! :+1:
+
+
+---
+
+## Other troubleshooting cautions
+
+Get more help in the following link: https://forum.universal-robots.com/t/offline-simulator-e-series-ur-sim-for-linux-5-11-1-removes-all-installed-files/15384
+
+And also: https://github.com/ljden/URSim_Install_Guides
+
+The following text is credited to github user ljden https://github.com/ljden.
+
+
+### Issue: Clashing dependencies with ROS
+URSim has a dependency on a libcurl3, as does ROS. HOWEVER one is libcurl3-gnutls while the other is libcurl3-openssl and as these both share a common symbolic object they cannot be both installed at the same time.
+This means that if you have ROS installed, the URSim install script removes libcurl3 to install its version, and Ubuntu sees you’ve removed a critical dependency for ROS and therefore suggests you remove ROS as it is “no longer required” which the script automatically accepts.
+This is the same thing that happens if you try to install npm alongside ROS… not fun.
+
+### Workaround: Install URSim before ROS
+Because both versions of libcurl3 share the same .so and the interface and feature set is predominantly the same, you can work around this by installing URSim first, and then installing ROS. This seems to work as whatever needed libcurl3 in URSim is able to deal with having the other version there instead. This is hacky for 2 reasons (apart from the obvious needing to make any changes to a provided install script/process…) you MUST have URSim installed before ROS. I am not sure if this means upgrading URSim will require you to wipe your ROS install, but I suspect it will. Secondly it is hacky because there may be features not available in the libcurl3-openssl that is needed by URSim which assumes it has libcurl3-gnutls installed.
+
+---
+
+### Issue: Java version number
+The URSim install script has a hacky and outdated java version checker. It is meant to check if the Java version is >= 6 but instead checks if it is >= 6 && < 10. HOWEVER the script is set up to install default-jre which installs java 11. This does not pass the version check test and returns the oh so useful error message of “Installed java version is too old, exiting”.
+
+### Workaround: Install Java 8 before running the install script
+I tried removing/adjusting the java version check in the install script so that it would accept Java 11. I think it didn’t work as the buggy version check is also used somewhere else in the start up script.
+Instead, you must install Java 8 before you run the script, or modify the script to install Java 8 for you.
+```
+sudo apt install openjdk-8-jdk openjdk-8-jre
+```
+
+---
+
+### Issue: Binaries not added to PATH
+Fairly self explanatory, the script doesn’t put the bins in a bin folder that’s in PATH and didn’t add their own bin folder to PATH.
+
+### Workaround: Add it to PATH
+
+```
+echo -e "\nPATH="$PATH:$HOME/ursim-5.10.0.106288/usr/bin" >> ~/.profile
+source ~/.profile
+```
+
+---
+
+### Issue: Missing net-statistics script
+URSim requires a net-statistics script to check the status of the network. This seems to be a custom script of theirs however they didn’t think to include it in the installation.
+
+### Workaround: Get a copy from elsewhere
+I originally had to install the non-linux VM so that I could find the script and save a copy of it to put on my 18.04 install. I’ve got the file on a repo which has steps for installing URSim on 18.04. You can download and install it by running:
+
+```
+wget https://raw.githubusercontent.com/ljden/URSim_Install_Guides/main/src/net-statistics
+sudo mv net-statistics /sbin/
+sudo chmod +x /sbin/net-statistics
+```
+
+---
+
+### Issue: net-statistics script breaks for Ubuntu 18.04
+The script tries to parse the output of ifconfig but is not compatible with 18.04.
+
+### Workaround: Use my modified script
+Script downloaded from link above already has the fix applied, otherwise you will need to modify it, see: Fix bug in ifconfig parsing · ljden/URSim_Install_Guides@ae6c220 · GitHub 21
+NB: You will need to ensure the net-statistics script has the right network device (see repo for more details)
+
+---
+
+### Final note:
+I know the pain of having ROS completely uninstalled. hopefully it doesn’t set you back too badly.
+It’s been a few months since I went through this pain so I may not have the exact details correct but I am fairly sure it is correct. As linked above, I forked a repo with instructions for 16.04 and updated it somewhat for 18.04. Didn’t have time to flesh it out with explanations or better solutions but it’s something. 
